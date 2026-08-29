@@ -35,15 +35,26 @@ public sealed class DelimitedFolderTableLoader : IKustoQueryContextTableLoader
     private static readonly string[] Extensions = [".csv", ".tsv", ".tsve", ".psv", ".scsv", ".sohsv"];
 
     private readonly string _folder;
+    private readonly IReadOnlyDictionary<string, string> _overrides;
 
     /// <summary>Serve <paramref name="folder"/> as a set of tables.</summary>
     /// <param name="maxRows">Maximum data rows taken from one file (default 1,000,000).</param>
-    public DelimitedFolderTableLoader(string folder, int maxRows = 1_000_000)
+    /// <param name="tableFiles">
+    /// Optional per-table file paths that win over the folder, so a single table can be served from elsewhere
+    /// (a different directory, a mounted secret, a file with an unrelated name) without moving the rest.
+    /// </param>
+    public DelimitedFolderTableLoader(
+        string folder,
+        int maxRows = 1_000_000,
+        IReadOnlyDictionary<string, string>? tableFiles = null)
     {
         if (string.IsNullOrWhiteSpace(folder)) throw new ArgumentException("folder must be provided.", nameof(folder));
         if (maxRows <= 0) throw new ArgumentOutOfRangeException(nameof(maxRows), maxRows, "maxRows must be positive.");
         _folder = folder;
         MaxRows = maxRows;
+        _overrides = tableFiles is null
+            ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, string>(tableFiles, StringComparer.OrdinalIgnoreCase);
     }
 
     /// <summary>Maximum data rows taken from a single file.</summary>
@@ -65,6 +76,9 @@ public sealed class DelimitedFolderTableLoader : IKustoQueryContextTableLoader
     /// <summary>The file backing <paramref name="tableName"/>, or null when the folder has none.</summary>
     public string? FindFile(string tableName)
     {
+        // An explicit per-table path wins over the folder — and is honoured even when the folder does not exist.
+        if (_overrides.TryGetValue(tableName, out var configured))
+            return File.Exists(configured) ? configured : null;
         if (!Directory.Exists(_folder)) return null;
         foreach (var extension in Extensions)
         foreach (var candidate in new[] { tableName + extension, tableName + extension + ".gz" })

@@ -115,6 +115,21 @@ public class DelimitedFolderTableLoaderTests : IDisposable
     }
 
     [TestMethod]
+    public async Task APerTableOverrideWinsOverTheFolder()
+    {
+        Write("Watchlist.csv", "Host\nfromfolder\n");
+        var elsewhere = Path.Combine(_folder, "somewhere-else.csv");
+        File.WriteAllText(elsewhere, "Host\nfromoverride\n");
+
+        var context = new KustoQueryContext();
+        context.SetTableLoader(new DelimitedFolderTableLoader(
+            _folder, tableFiles: new Dictionary<string, string> { ["Watchlist"] = elsewhere }));
+
+        var result = await context.RunQuery("Watchlist | project Host");
+        result.GetRow(0)[0]?.ToString().Should().Be("fromoverride");
+    }
+
+    [TestMethod]
     public void FindFileLocatesTheBackingFileOrReturnsNull()
     {
         Write("Present.csv", "Name\nx\n");
