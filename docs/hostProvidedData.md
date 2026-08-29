@@ -99,6 +99,22 @@ public IReadOnlyList<IReadOnlyList<string>> ResolveRows(string uri, string forma
 `DelimiterFor` maps the KQL delimited formats — `csv`, `tsv`/`tsve`, `scsv`, `sohsv`, `psv` — and
 `Parse` handles RFC4180 quoting.
 
+## Tables from a folder — `DelimitedFolderTableLoader`
+
+For the common case of "a folder of lists, served as tables", the engine ships a loader rather than
+leaving every host to write one:
+
+```csharp
+context.SetTableLoader(new DelimitedFolderTableLoader("reference/tables"));
+```
+
+A query naming `Watchlist` is then answered by `Watchlist.csv` in that folder — loaded on demand (only
+tables a query actually names are read), gzip-aware (`.csv.gz`), and split on the delimiter its
+extension implies. The header row names the columns and may type them — `Port:int`, `Seen:datetime` —
+so rules use native predicates instead of string comparison. `MaxRows` bounds one file, a table already
+present in the context is never overridden, and a referenced table with no file is left absent so the
+query fails with the usual unknown-table error rather than silently matching nothing.
+
 ### Supported formats, and a note on JSON
 
 Only the **delimited** family is supported today. ADX additionally accepts `json`, `multijson`,
