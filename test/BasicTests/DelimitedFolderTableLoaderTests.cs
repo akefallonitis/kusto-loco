@@ -115,6 +115,17 @@ public class DelimitedFolderTableLoaderTests : IDisposable
     }
 
     [TestMethod]
+    public async Task SkipsALeadingCommentBanner()
+    {
+        // Published reference data usually carries a provenance/licence banner above the header; treating that as
+        // the header would name every column after the banner text.
+        Write("Banner.csv", "# source: some feed, CC-BY-4.0\n# generated: 2026-01-01\n\nHost,Reason\nevil.example,c2\n");
+        var result = await ContextFor().RunQuery("Banner | project Reason");
+        result.Error.Should().BeNullOrEmpty();
+        result.GetRow(0)[0]?.ToString().Should().Be("c2");
+    }
+
+    [TestMethod]
     public async Task APerTableOverrideWinsOverTheFolder()
     {
         Write("Watchlist.csv", "Host\nfromfolder\n");

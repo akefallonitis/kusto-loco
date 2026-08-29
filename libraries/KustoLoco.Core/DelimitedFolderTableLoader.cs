@@ -92,9 +92,13 @@ public sealed class DelimitedFolderTableLoader : IKustoQueryContextTableLoader
     private TableBuilder Load(string tableName, string path)
     {
         var delimiter = DelimitedTextParser.DelimiterFor(ExtensionFormat(path));
-        var rows = DelimitedTextParser.Parse(ReadAllText(path), delimiter);
-        if (rows.Count == 0)
-            throw new InvalidOperationException($"table file '{path}' is empty (a header row is required).");
+        // Skip leading '#' comment lines and blank lines: published reference data commonly carries a provenance
+        // or licence banner above the header, and treating that banner as the header would name every column after it.
+        var rows = DelimitedTextParser.Parse(ReadAllText(path), delimiter)
+            .SkipWhile(r => r.Count == 0 || (r[0] is { } first && (first.Length == 0 || first.TrimStart().StartsWith('#'))))
+            .ToArray();
+        if (rows.Length == 0)
+            throw new InvalidOperationException($"table file '{path}' has no header row (only blank or '#' comment lines).");
 
         var header = rows[0];
         var columns = header.Select(ParseHeader).ToArray();
