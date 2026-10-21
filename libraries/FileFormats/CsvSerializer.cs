@@ -1,5 +1,6 @@
 ﻿using System.Globalization;
 using System.Text;
+using System.Text.Json.Nodes;
 using CsvHelper;
 using CsvHelper.Configuration;
 using KustoLoco.Core;
@@ -144,9 +145,13 @@ public class CsvSerializer : ITableSerializer
                 _console.ShowProgress($"wrote {rowCount} records");
             foreach (var cell in r)
             {
-                var toPrint = cell is DateTime dt
-                    ? dt.ToString("o", CultureInfo.InvariantCulture)
-                    : Convert.ToString(cell, CultureInfo.InvariantCulture);
+                var toPrint = cell switch
+                {
+                    DateTime dt => dt.ToString("o", CultureInfo.InvariantCulture),
+                    // dynamic values are written as tostring() gives them: compact JSON
+                    JsonNode node => DynamicText.ToKustoString(node),
+                    _ => Convert.ToString(cell, CultureInfo.InvariantCulture)
+                };
                 csv.WriteField(toPrint);
             }
 

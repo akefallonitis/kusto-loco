@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Kusto.Language.Symbols;
+using KustoLoco.Core.Util;
 
 namespace KustoLoco.Core.Evaluation.BuiltIns.Impl;
 
@@ -131,7 +132,7 @@ internal static class JsonArrayHelper
 
         // Handle different target types
         if (targetType == ScalarTypes.String)
-            return node.ToString();
+            return DynamicText.ToKustoString(node);
 
         if (targetType == ScalarTypes.Long)
             if (node is JsonValue jsonValue && jsonValue.TryGetValue<long>(out var longValue))

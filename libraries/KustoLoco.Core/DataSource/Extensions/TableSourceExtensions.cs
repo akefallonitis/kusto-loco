@@ -4,11 +4,9 @@
 using System;
 using System.Globalization;
 using System.IO;
-using System.Text.Encodings.Web;
-using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization.Metadata;
 using Kusto.Language.Symbols;
+using KustoLoco.Core.Util;
 
 namespace KustoLoco.Core.Extensions;
 
@@ -17,12 +15,6 @@ namespace KustoLoco.Core.Extensions;
 /// </summary>
 public static class TableSourceExtensions
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
-    {
-        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
-        TypeInfoResolver = new DefaultJsonTypeInfoResolver()
-    };
-
     public static void Dump(this ITableSource table, TextWriter writer, int indent = 0)
     {
         WriteIndent(writer, indent);
@@ -83,7 +75,7 @@ public static class TableSourceExtensions
     {
         try
         {
-            return jsonNode.ToJsonString(JsonOptions);
+            return DynamicText.ToJson(jsonNode);
         }
         catch (Exception ex)
         {
