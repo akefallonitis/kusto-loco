@@ -256,14 +256,12 @@ internal class MakeListStringFunctionImpl : IAggregateImpl
         var list = new List<string>();
         for (var i = 0; i < valuesColumn.RowCount; i++)
         {
-            var v = valuesColumn[i];
-            if (!string.IsNullOrEmpty(v))
+            // ADX has no null string: a missing value is the empty string, which is kept
+            var v = valuesColumn[i] ?? string.Empty;
+            list.Add(v);
+            if (list.Count >= maxSize)
             {
-                list.Add(v);
-                if (list.Count >= maxSize)
-                {
-                    break;
-                }
+                break;
             }
         }
 
