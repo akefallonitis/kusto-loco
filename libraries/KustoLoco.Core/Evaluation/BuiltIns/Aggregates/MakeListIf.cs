@@ -290,14 +290,12 @@ internal class MakeListIfStringFunctionImpl : IAggregateImpl
         {
             if (predicatesColumn[i] == true)
             {
-                var v = valuesColumn[i];
-                if (!string.IsNullOrEmpty(v))
+                // ADX has no null string: a missing value is the empty string, which is kept
+                var v = valuesColumn[i] ?? string.Empty;
+                list.Add(v);
+                if (list.Count >= maxSize)
                 {
-                    list.Add(v);
-                    if (list.Count >= maxSize)
-                    {
-                        break;
-                    }
+                    break;
                 }
             }
         }
