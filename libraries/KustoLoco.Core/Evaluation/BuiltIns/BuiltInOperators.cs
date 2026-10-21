@@ -123,6 +123,16 @@ internal static class BuiltInOperators
         NotHasFunction.Register(operators);
         NotHasCsFunction.Register(operators);
 
+        // hasprefix / hassuffix, their case-sensitive forms and negations
+        HasPrefixFunction.Register(operators);
+        HasPrefixCsFunction.Register(operators);
+        NotHasPrefixFunction.Register(operators);
+        NotHasPrefixCsFunction.Register(operators);
+        HasSuffixFunction.Register(operators);
+        HasSuffixCsFunction.Register(operators);
+        NotHasSuffixFunction.Register(operators);
+        NotHasSuffixCsFunction.Register(operators);
+
         StartsWithFunction.Register(operators);
         StartsWithCsFunction.Register(operators);
         NotStartsWithFunction.Register(operators);
