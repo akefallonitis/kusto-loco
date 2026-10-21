@@ -41,11 +41,25 @@ internal partial class TreeEvaluator
             .Where(pair => pair.Source >= 0 && pair.Lookup >= 0)
             .ToArray();
 
+        // IPv4 lookups find their candidate rows through a range index (sorted networks per prefix length, binary
+        // search) instead of scanning the whole lookup table per source row. The index returns the matching rows
+        // ascending, so rows are appended in lookup-table order as before; it parses ranges and addresses as the ADX
+        // engine does (a range without a prefix is a /32, a source may carry a prefix).
+        var index = !node.IsIpv6 && lookupIpIdx >= 0 ? Ipv4RangeIndex.For(lookup, lookupChunk, lookupIpIdx) : null;
+
         for (var sr = 0; sr < srcChunk.RowCount; sr++)
         {
             var ip = sourceIpColumn.GetRawDataValue(sr)?.ToString();
             var matched = false;
-            if (ip != null && lookupIpIdx >= 0)
+            if (index != null)
+                foreach (var lr in index.Rows(ip))
+                {
+                    if (!ExtraKeysMatch(extraKeyIndices, srcChunk, sr, lookupChunk, lr))
+                        continue;
+                    AppendJoinedRow(outBuilders, resultSchema, sourceSchema, lookupSchema, srcChunk, sr, lookupChunk, lr);
+                    matched = true;
+                }
+            else if (ip != null && lookupIpIdx >= 0)
                 for (var lr = 0; lr < lookupChunk.RowCount; lr++)
                 {
                     var cidr = lookupChunk.Columns[lookupIpIdx].GetRawDataValue(lr)?.ToString();
