@@ -8,5 +8,6 @@ namespace KustoLoco.Core.Evaluation.BuiltIns.Impl;
 [KustoImplementation(Keyword = "Functions.Ago")]
 internal partial class AgoFunction
 {
-    private static DateTime Impl(TimeSpan t) => DateTime.UtcNow - t;
+    // reads the query clock: https://learn.microsoft.com/kusto/query/ago-function
+    private static DateTime Impl(TimeSpan t) => QueryClock.UtcNow - t;
 }

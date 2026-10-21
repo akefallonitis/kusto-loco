@@ -17,7 +17,9 @@ internal static class BuiltInScalarFunctions
     {
         //not worth auto-generating these because they are short-circuited scalars
         Functions.Add(Kusto.Language.Functions.Now,
-            new ScalarFunctionInfo(new ScalarOverloadInfo(new NowFunctionImpl(), ScalarTypes.DateTime)));
+            new ScalarFunctionInfo(new ScalarOverloadInfo(new NowFunctionImpl(), ScalarTypes.DateTime),
+                // now(offset)
+                new ScalarOverloadInfo(new NowFunctionImpl(), ScalarTypes.DateTime, ScalarTypes.TimeSpan)));
         //not worth auto-generating these because they are short-circuited scalars
 
         Functions.Add(Kusto.Language.Functions.PI,
