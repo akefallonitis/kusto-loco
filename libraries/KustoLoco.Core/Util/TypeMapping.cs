@@ -112,8 +112,9 @@ public static class TypeMapping
     {
         if (KustoToNetToLookup.TryGetValue(ts, out var type))
             return type;
-        if (ts is DynamicPrimitiveSymbol ds)
-            return UnderlyingTypeForSymbol(ds.UnderlyingType);
+        // Every flavour of dynamic - including the dynamic(string), dynamic(long) etc. that
+        // Kusto.Language infers for a literal such as dynamic("x") - is held as a JsonNode,
+        // the same way Simplify() treats them all as ScalarTypes.Dynamic
         if (ts.Name == "dynamic")
             return UnderlyingTypeForSymbol(ScalarTypes.Dynamic);
         throw new NotImplementedException($"No .Net type  equivalent for typeSymbol {ts.Name}");
