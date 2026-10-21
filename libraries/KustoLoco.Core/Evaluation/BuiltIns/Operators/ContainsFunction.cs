@@ -13,6 +13,6 @@ internal partial class ContainsFunction
 [KustoImplementation(Keyword = "Operators.Has")]
 internal partial class HasFunction
 {
-    private static bool Impl(string a, string b) => a.Contains(b, StringComparison.InvariantCultureIgnoreCase);
+    private static bool Impl(string a, string b) => TermMatch.Has(a, b, caseSensitive: false);
 }
 

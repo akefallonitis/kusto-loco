@@ -1071,7 +1071,8 @@ print toscalar(letters | summarize mx=min(bitmap));";
                      | where A has_any('aA','b') | count
                     """;
         var result = await LastLineOfResult(query);
-        result.Should().Be("2");
+        // has_any matches whole terms: only "B" has the term "b"; "AAA" does not have the term "aA"
+        result.Should().Be("1");
     }
 
     [TestMethod]
@@ -1086,7 +1087,8 @@ print toscalar(letters | summarize mx=min(bitmap));";
                      | where A has_all('aA','b') | count
                     """;
         var result = await LastLineOfResult(query);
-        result.Should().Be("1");
+        // has_all matches whole terms: no row has both the term "aA" and the term "b"
+        result.Should().Be("0");
     }
 
     [TestMethod]
@@ -1101,7 +1103,8 @@ print toscalar(letters | summarize mx=min(bitmap));";
                      | where A has('aA') | count
                     """;
         var result = await LastLineOfResult(query);
-        result.Should().Be("2");
+        // has matches whole terms, not substrings: neither "AAA" nor "BAAAaa" is the term "aA"
+        result.Should().Be("0");
     }
 
     [TestMethod]

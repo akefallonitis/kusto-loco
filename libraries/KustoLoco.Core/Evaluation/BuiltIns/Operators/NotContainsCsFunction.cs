@@ -13,5 +13,5 @@ internal partial class NotContainsCsFunction
 [KustoImplementation(Keyword = "Operators.NotHasCs")]
 internal partial class NotHasCsFunction
 {
-    private static bool Impl(string a, string b) => !a.Contains(b, StringComparison.InvariantCulture);
+    private static bool Impl(string a, string b) => !TermMatch.Has(a, b, caseSensitive: true);
 }
