@@ -105,15 +105,143 @@ internal partial class IRTranslator : DefaultSyntaxVisitor<IRNode>
             overloadInfo, new List<Parameter>(), IRListNode.From(irArguments), ScalarTypes.Bool);
     }
 
-    public override IRNode VisitInExpression(InExpression node) =>
-        VisitExpressionWithArray(node, node.Left, node.Right);
+    // Every element of the list takes part: a scalar, the elements of a dynamic array, the first column of a
+    // tabular expression. https://learn.microsoft.com/kusto/query/in-operator
+    public override IRNode VisitInExpression(InExpression node)
+    {
+        var op = node.Operator.Text.Replace(" ", "", StringComparison.Ordinal);
+        var caseInsensitive = op.EndsWith('~');
+        var negated = op.StartsWith('!');
+        var left = (IRExpressionNode)node.Left.Accept(this);
+        var elements = node.Right.Expressions
+            .Select(e => (IRExpressionNode)e.Element.Accept(this))
+            .ToList();
+        return new IRInListNode(left, elements, InListDomainFor(node, caseInsensitive), caseInsensitive, negated);
+    }
 
+    /// <summary>The comparison domain: the left side's type; for a dynamic left side, the list's scalar type (ADX converts
+    /// the dynamic value to it); always string for in~.</summary>
+    private static InListDomain InListDomainFor(InExpression node, bool caseInsensitive)
+    {
+        if (caseInsensitive) return InListDomain.String;
+        var left = node.Left.ResultType.Simplify();
+        if (left is not DynamicSymbol && left != ScalarTypes.Dynamic) return DomainOf(left!) ?? InListDomain.String;
 
-    public override IRNode VisitHasAnyExpression(HasAnyExpression node) =>
-        VisitExpressionWithArray(node, node.Left, node.Right);
+        var types = new List<InListDomain>();
+        foreach (var element in node.Right.Expressions.Select(e => e.Element))
+        {
+            var type = element.ResultType;
+            if (type is TableSymbol table)
+            {
+                if (table.Columns.Count > 0 && DomainOf(table.Columns[0].Type) is { } d) types.Add(d);
+                continue;
+            }
+            if (type is DynamicSymbol || type == ScalarTypes.Dynamic)
+            {
+                if (DynamicLiteralItems(element) is { } items) types.AddRange(items.Select(i => LiteralDomain(i)).OfType<InListDomain>());
+                continue;
+            }
+            if (DomainOf(type) is { } scalar) types.Add(scalar);
+        }
+        if (types.Count == 0) return InListDomain.String;
+        if (types.TrueForAll(t => t == types[0])) return types[0];
+        if (types.TrueForAll(t => t is InListDomain.Long or InListDomain.Real)) return InListDomain.Real;
+        throw new NotSupportedException("a dynamic left side of 'in' against a list of mixed scalar types");
+    }
 
-    public override IRNode VisitHasAllExpression(HasAllExpression node) =>
-        VisitExpressionWithArray(node, node.Left, node.Right);
+    private static InListDomain? DomainOf(TypeSymbol type)
+    {
+        type = type.Simplify()!;
+        if (type == ScalarTypes.String) return InListDomain.String;
+        if (type == ScalarTypes.Long || type == ScalarTypes.Int) return InListDomain.Long;
+        if (type == ScalarTypes.Real || type == ScalarTypes.Decimal) return InListDomain.Real;
+        if (type == ScalarTypes.Bool) return InListDomain.Bool;
+        if (type == ScalarTypes.DateTime) return InListDomain.DateTime;
+        if (type == ScalarTypes.TimeSpan) return InListDomain.TimeSpan;
+        if (type == ScalarTypes.Guid) return InListDomain.Guid;
+        return null;
+    }
+
+    private static InListDomain? LiteralDomain(object? value) => value switch
+    {
+        string => InListDomain.String,
+        long or int => InListDomain.Long,
+        double or decimal => InListDomain.Real,
+        bool => InListDomain.Bool,
+        _ => null,
+    };
+
+    /// <summary>The literal values of a <c>dynamic([...])</c> array, inline or let-bound; null when it is not one.</summary>
+    private static List<object?>? DynamicLiteralItems(Expression e, int depth = 0)
+    {
+        while (e is ParenthesizedExpression p) e = p.Expression;
+        if (depth < 8 && e is NameReference { ReferencedSymbol: VariableSymbol { Source: Expression source } })
+            return DynamicLiteralItems(source, depth + 1);
+        if (e is not DynamicExpression { Expression: JsonArrayExpression array }) return null;
+        return array.Values.Select(v => v.Element is LiteralExpression l ? l.LiteralValue : null).ToList();
+    }
+
+    /// <summary>The constant needles of a has_any / has_all list: string and numeric literals, let-bound constants and the
+    /// items of literal dynamic arrays (inline or let-bound). Null when an element is not constant.</summary>
+    private static List<string?>? ConstantNeedles(ExpressionList list)
+    {
+        var needles = new List<string?>();
+        foreach (var element in list.Expressions.Select(e => e.Element))
+        {
+            if (ConstantScalar(element) is { } c) { needles.Add(c); continue; }
+            if (DynamicLiteralItems(element) is { } items)
+            {
+                foreach (var item in items)
+                {
+                    if (NeedleText(item) is not { } t) return null;
+                    needles.Add(t);
+                }
+                continue;
+            }
+            return null;
+        }
+        return needles;
+    }
+
+    private static string? ConstantScalar(Expression e, int depth = 0)
+    {
+        while (e is ParenthesizedExpression p) e = p.Expression;
+        if (e is LiteralExpression l) return NeedleText(l.LiteralValue);
+        if (depth < 8 && e is NameReference { ReferencedSymbol: VariableSymbol v } && v.Type is not DynamicSymbol && v.Type != ScalarTypes.Dynamic)
+        {
+            if (v.IsConstant && NeedleText(v.ConstantValue) is { } c) return c;
+            if (v.Source is Expression source) return ConstantScalar(source, depth + 1);
+        }
+        return null;
+    }
+
+    private static string? NeedleText(object? value) => value switch
+    {
+        string s => s,
+        bool b => b ? "true" : "false",
+        IFormattable f => f.ToString(null, CultureInfo.InvariantCulture),
+        _ => null,
+    };
+
+    // has_any / has_all take let-bound constants and literal dynamic arrays (expanded to their items); a list
+    // that is not constant is refused instead of silently dropping its elements.
+    // https://learn.microsoft.com/kusto/query/has-anyoperator , https://learn.microsoft.com/kusto/query/has-all-operator
+    public override IRNode VisitHasAnyExpression(HasAnyExpression node) => VisitHasList(node, node.Left, node.Right, "has_any");
+
+    public override IRNode VisitHasAllExpression(HasAllExpression node) => VisitHasList(node, node.Left, node.Right, "has_all");
+
+    private IRNode VisitHasList(Expression node, Expression left, ExpressionList right, string name)
+    {
+        var needles = ConstantNeedles(right)
+                      ?? throw new NotSupportedException($"{name} over a computed or tabular list is not supported");
+        var signature = node.ReferencedSignature;
+        var parameterExpression = (IRExpressionNode)left.Accept(this);
+        var str1 = new IRPreEvaluatedScalarExpressionNode(JsonArrayHelper.From(needles.ToArray()), DynamicArraySymbol.From("dynamic"));
+        var irArguments = new[] { parameterExpression, str1 };
+        var overloadInfo = BuiltInOperators.GetOverload((OperatorSymbol)signature.Symbol, node.ResultType, irArguments);
+        return new IRBuiltInScalarFunctionCallNode(signature, overloadInfo, new List<Parameter>(), IRListNode.From(irArguments),
+            ScalarTypes.Bool);
+    }
 
     public override IRNode VisitSimpleNamedExpression(SimpleNamedExpression node) => node.Expression.Accept(this);
 
