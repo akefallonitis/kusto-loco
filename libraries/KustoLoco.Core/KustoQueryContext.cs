@@ -44,6 +44,13 @@ public class KustoQueryContext
 
     public IEnumerable<string> TableNames => Tables().Select(t => t.Name);
 
+    /// <summary>
+    ///     The clock now() and ago() read, as a UTC instant. It is read once per query and every now() / ago() in
+    ///     the query sees that value. Defaults to the system clock.
+    ///     https://learn.microsoft.com/kusto/query/now-function
+    /// </summary>
+    public Func<DateTime> Clock { get; set; } = () => DateTime.UtcNow;
+
 
     public static (VisualizationState state,string trimmedQuery) GetVisualizationState(string query)
     {
@@ -221,6 +228,8 @@ public class KustoQueryContext
 
         try
         {
+            // one instant for the whole evaluation, including the materialisation of the result below
+            using var clock = QueryClock.Fix(Clock());
             var result =
                 engine.Evaluate(_tables, query);
             var (table, vis) = TableFromEvaluationResult(result);
