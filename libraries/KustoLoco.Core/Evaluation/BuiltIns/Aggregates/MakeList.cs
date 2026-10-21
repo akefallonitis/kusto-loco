@@ -277,31 +277,9 @@ internal class MakeListDynamicFunctionImpl : IAggregateImpl
     {
         MyDebug.Assert(arguments.Length == 1 || arguments.Length == 2);
         var valuesColumn = (GenericTypedBaseColumnOfJsonNode)arguments[0].Column;
-
-        var maxSize = long.MaxValue;
-        if (arguments.Length == 2)
-        {
-            var maxSizeColumn = (GenericTypedBaseColumnOflong)arguments[1].Column;
-            MyDebug.Assert(valuesColumn.RowCount == maxSizeColumn.RowCount);
-
-            if (maxSizeColumn.RowCount > 0)
-            {
-                maxSize = maxSizeColumn[0] ?? long.MaxValue;
-            }
-        }
-
-        var list = new List<JsonNode?>();
-        for (var i = 0; i < valuesColumn.RowCount; i++)
-        {
-            var v = valuesColumn[i];
-            if (v == null) continue;
-            list.Add(v);
-            if (list.Count >= maxSize)
-            {
-                break;
-            }
-        }
-
-        return new ScalarResult(ScalarTypes.Dynamic, JsonArrayHelper.From(list));
+        // an array contributes its elements - see DynamicValueCollector
+        var list = DynamicValueCollector.Collect(valuesColumn, null,
+            DynamicValueCollector.MaxSize(arguments, 1), false);
+        return new ScalarResult(ScalarTypes.Dynamic, list);
     }
 }

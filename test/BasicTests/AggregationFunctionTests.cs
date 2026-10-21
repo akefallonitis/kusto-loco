@@ -449,9 +449,8 @@ datatable(value:dynamic)
 | summarize result = make_list(value)
 ";
         var result = await SquashedLastLineOfResult(query);
-        result.Should().Contain("{\"a\":1}");
-        result.Should().Contain("{\"b\":2}");
-        result.Should().Contain("[1,2,3]");
+        // an array value contributes its elements (ADX result)
+        result.Should().Be("[{\"a\":1},{\"b\":2},1,2,3]");
     }
 
     #endregion
