@@ -3,9 +3,11 @@
 
 using System;
 using System.Diagnostics;
+using System.Text.Json.Nodes;
 using Kusto.Language.Symbols;
 using KustoLoco.Core.DataSource.Columns;
 using KustoLoco.Core.InternalRepresentation.Nodes.Expressions;
+using KustoLoco.Core.Util;
 using NotNullStrings;
 
 namespace KustoLoco.Core.Evaluation;
@@ -55,7 +57,7 @@ internal partial class TreeEvaluator
                 {
                     MyDebug.Assert(arguments.Length == 1);
                     var value = ((ScalarResult)arguments[0]).Value;
-                    return new ScalarResult(node.ResultType, value == null ? null : Convert.ToString(value));
+                    return new ScalarResult(node.ResultType, value == null ? null : ConvertToString(value));
                 },
                 EvaluatedExpressionKind.Scalar => throw new InvalidOperationException(
                     $"Unexpected target cast type for scalar value: {SchemaDisplay.GetText(node.ResultType)}"),
@@ -97,7 +99,7 @@ internal partial class TreeEvaluator
                 {
                     var columnResult = (ColumnarResult)arguments[0];
                     var convertingColumn = GenericConvertingColumnOfstring.Create(columnResult.Column,
-                        i => i == null ? string.Empty : Convert.ToString(i).NullToEmpty());
+                        i => i == null ? string.Empty : ConvertToString(i));
                     return new ColumnarResult(convertingColumn);
                 },
                 EvaluatedExpressionKind.Columnar when node.ResultType == ScalarTypes.DateTime => arguments =>
@@ -117,4 +119,10 @@ internal partial class TreeEvaluator
         var expressionResult = node.Expression.Accept(this, context);
         return impl([expressionResult]);
     }
+
+    // a dynamic value converts as tostring() does: compact JSON with ADX escaping
+    private static string ConvertToString(object value) =>
+        value is JsonNode node
+            ? DynamicText.ToKustoString(node)
+            : Convert.ToString(value).NullToEmpty();
 }
