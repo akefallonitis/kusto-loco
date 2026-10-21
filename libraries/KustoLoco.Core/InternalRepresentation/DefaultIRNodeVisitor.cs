@@ -55,6 +55,9 @@ internal abstract class DefaultIRNodeVisitor<TResult, TContext> : IRNodeVisitor<
 
     public override TResult VisitList(IRListNode node, TContext context) => DefaultVisit(node, context);
 
+    public override TResult VisitInList(IRInListNode node, TContext context) =>
+        DefaultVisit(node, context);
+
     public override TResult VisitLiteralExpression(IRLiteralExpressionNode node, TContext context) =>
         DefaultVisit(node, context);
 
