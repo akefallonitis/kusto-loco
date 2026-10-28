@@ -173,7 +173,8 @@ internal partial class IRTranslator : DefaultSyntaxVisitor<IRNode>
         var literalValue = (string)node.LiteralValue;
         try
         {
-            var parsedValue = JsonNode.Parse(literalValue);
+            // strings that read as a datetime or a guid are typed, as ADX does
+            var parsedValue = DynamicStringTyping.Apply(JsonNode.Parse(literalValue));
             return new IRLiteralExpressionNode(parsedValue, node.ResultType);
         }
         catch (JsonException)
