@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
+using KustoLoco.Core.Util;
 
 namespace KustoLoco.Core.Evaluation.BuiltIns.Impl;
 
@@ -15,7 +16,8 @@ public partial class ParseJsonFunction
 
         try
         {
-            return JsonNode.Parse(input);
+            // strings that read as a datetime or a guid are typed, as ADX does
+            return DynamicStringTyping.Apply(JsonNode.Parse(input));
         }
         catch (JsonException)
         {

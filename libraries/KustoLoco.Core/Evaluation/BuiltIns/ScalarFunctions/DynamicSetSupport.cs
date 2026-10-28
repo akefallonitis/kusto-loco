@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json.Nodes;
+using KustoLoco.Core.Util;
 
 namespace KustoLoco.Core.Evaluation.BuiltIns.Impl;
 
@@ -25,6 +26,16 @@ internal static class DynamicSetSupport
         foreach (var el in arr)
             if (string.Equals(el?.ToJsonString(), target, StringComparison.Ordinal)) return true;
         return false;
+    }
+
+    // set_has_element with a string value. ADX converts the value to the type of the element it is compared with, so a
+    // string that reads as a datetime or a guid also finds the element that parse_json or a dynamic literal typed from
+    // the same text (set_has_element(parse_json('["2015-01-01"]'), "2015-01-01") is true): see DynamicStringTyping.
+    public static bool? HasString(JsonNode set, string value)
+    {
+        var has = Has(set, JsonValue.Create(value));
+        if (has != false || !DynamicStringTyping.TryGetTypedText(value, out var typed) || typed == value) return has;
+        return Has(set, JsonValue.Create(typed));
     }
 
     // bag_has_key(bag, key) -> true iff the top-level key is present; null when the bag argument is not an object.

@@ -114,9 +114,36 @@ internal partial class IRTranslator : DefaultSyntaxVisitor<IRNode>
         var negated = op.StartsWith('!');
         var left = (IRExpressionNode)node.Left.Accept(this);
         var elements = node.Right.Expressions
-            .Select(e => (IRExpressionNode)e.Element.Accept(this))
+            .Select(e => InListElement(e.Element))
             .ToList();
         return new IRInListNode(left, elements, InListDomainFor(node, caseInsensitive), caseInsensitive, negated);
+    }
+
+    /// <summary>A dynamic literal in the list, inline or let-bound, takes part with its values as written: ADX matches
+    /// "2015-01-01" in (dynamic(["2015-01-01"])) and a guid in upper case against the same text, although the literal,
+    /// used as a value, types those strings as a datetime and a guid (DynamicStringTyping). Checked against kustainer.</summary>
+    private IRExpressionNode InListElement(Expression element)
+    {
+        if (LiteralDynamic(element) is { } literal)
+        {
+            try
+            {
+                return new IRLiteralExpressionNode(JsonNode.Parse((string)literal.LiteralValue), element.ResultType);
+            }
+            catch (JsonException)
+            {
+                // not JSON to System.Text.Json: translated as usual, which reports it
+            }
+        }
+        return (IRExpressionNode)element.Accept(this);
+    }
+
+    private static DynamicExpression? LiteralDynamic(Expression e, int depth = 0)
+    {
+        while (e is ParenthesizedExpression p) e = p.Expression;
+        if (depth < 8 && e is NameReference { ReferencedSymbol: VariableSymbol { Source: Expression source } })
+            return LiteralDynamic(source, depth + 1);
+        return e as DynamicExpression;
     }
 
     /// <summary>The comparison domain: the left side's type; for a dynamic left side, the list's scalar type (ADX converts
@@ -301,7 +328,8 @@ internal partial class IRTranslator : DefaultSyntaxVisitor<IRNode>
         var literalValue = (string)node.LiteralValue;
         try
         {
-            var parsedValue = JsonNode.Parse(literalValue);
+            // strings that read as a datetime or a guid are typed, as ADX does
+            var parsedValue = DynamicStringTyping.Apply(JsonNode.Parse(literalValue));
             return new IRLiteralExpressionNode(parsedValue, node.ResultType);
         }
         catch (JsonException)
