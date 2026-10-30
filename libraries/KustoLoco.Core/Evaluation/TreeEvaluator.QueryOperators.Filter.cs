@@ -55,8 +55,12 @@ internal partial class TreeEvaluator
                 // Scalar will evaluate to the same value for any chunk, so we can process the entire chunk at once
                 case ScalarResult scalar when (bool?)scalar.Value == true:
                     return (default, chunk.ReParent(this), false);
+                // a constant-false predicate keeps no rows but keeps the columns: TableChunk.Empty has no columns,
+                // which downstream operators fail on. https://learn.microsoft.com/kusto/query/where-operator
                 case ScalarResult:
-                    return (default, TableChunk.Empty, false);
+                    return (default, new TableChunk(this, chunk.Columns
+                        .Select(c => ColumnHelpers.MapColumn(c, ImmutableArray<int>.Empty))
+                        .ToArray()), false);
                 case ColumnarResult columnar:
                 {
                     var predicateColumn = (GenericTypedBaseColumnOfbool)columnar.Column;
