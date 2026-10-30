@@ -8,5 +8,5 @@ internal partial class HasAllOperator
 {
     private static bool Impl(InContext context, string a, JsonNode jsonArray) =>
         InOperatorCore.CheckString(StringComparison.InvariantCultureIgnoreCase, context, a, jsonArray,
-            InOperatorCore.EqualsContains.Contains, InOperatorCore.AllAny.All);
+            InOperatorCore.EqualsContains.Term, InOperatorCore.AllAny.All);
 }

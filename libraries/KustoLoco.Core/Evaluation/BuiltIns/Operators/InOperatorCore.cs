@@ -15,7 +15,10 @@ public static class InOperatorCore
     public enum EqualsContains
     {
         Equals,
-        Contains
+        Contains,
+
+        // whole-term match, as has_any / has_all use: https://learn.microsoft.com/kusto/query/has-anyoperator
+        Term
     }
 
     public static bool CheckString(StringComparison comparison, InContext context, string a, JsonNode jsonArray,
@@ -40,7 +43,11 @@ public static class InOperatorCore
             }
 
             context.LastResult =
-                allAny == AllAny.Any
+                equals == EqualsContains.Term
+                    ? allAny == AllAny.Any
+                        ? context.LastStringArray.Any(x => TermMatch.Has(a, x, caseSensitive: false))
+                        : context.LastStringArray.All(x => TermMatch.Has(a, x, caseSensitive: false))
+                    : allAny == AllAny.Any
                     ? equals == EqualsContains.Equals
                         ? context.LastStringArray.Any(x => a.Equals(x, comparison))
                         : context.LastStringArray.Any(x => a.Contains(x, comparison))
