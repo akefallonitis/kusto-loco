@@ -164,6 +164,9 @@ internal partial class TreeEvaluator
 
 
                 var chunkContext = _context with { Chunk = bucketChunk };
+                // each aggregate's columns follow the previous aggregate's: a scalar aggregate fills one column, a
+                // row aggregate (arg_min, arg_max) one per value it returns
+                var column = summarySet.ByValues.Length;
                 for (var i = 0; i < _aggregationExpressions.Count; i++)
                 {
                     var aggregationExpression = _aggregationExpressions[i];
@@ -172,17 +175,13 @@ internal partial class TreeEvaluator
                     {
                         MyDebug.Assert(scalar.Type.Simplify() == aggregationExpression.ResultType.Simplify(),
                             $"Aggregation expression produced wrong type {SchemaDisplay.GetText(scalar.Type)}, expected {SchemaDisplay.GetText(aggregationExpression.ResultType)}.");
-                        resultColumns[summarySet.ByValues.Length + i].Add(scalar.Value);
+                        resultColumns[column++].Add(scalar.Value);
                     }
 
                     if (aggregationResult is RowResult rowResult)
                     {
-                        var offset = 0;
                         foreach (var v in rowResult.Values)
-                        {
-                            resultColumns[summarySet.ByValues.Length + offset].Add(v);
-                            offset++;
-                        }
+                            resultColumns[column++].Add(v);
                     }
                 }
             }
