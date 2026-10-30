@@ -394,11 +394,59 @@ internal partial class IRTranslator : DefaultSyntaxVisitor<IRNode>
         var irRight = (IRExpressionNode)node.Right.Accept(this);
 
         var irArguments = new[] { irLeft, irRight };
+        if (ComparisonKinds.Contains(node.Kind))
+            ConvertDynamicOperandToTypedOperand(irArguments);
         var overloadInfo = BuiltInOperators.GetOverload((OperatorSymbol)signature.Symbol,
             node.ResultType, irArguments);
 
         ApplyTypeCoercions(irArguments, overloadInfo);
         return new IRBinaryExpressionNode(signature, overloadInfo, irArguments[0], irArguments[1], node.ResultType);
+    }
+
+    private static readonly HashSet<SyntaxKind> ComparisonKinds =
+    [
+        SyntaxKind.EqualExpression, SyntaxKind.NotEqualExpression,
+        SyntaxKind.LessThanExpression, SyntaxKind.LessThanOrEqualExpression,
+        SyntaxKind.GreaterThanExpression, SyntaxKind.GreaterThanOrEqualExpression,
+    ];
+
+    // The conversion ADX applies to a dynamic value compared with a scalar of each type.
+    private static readonly Dictionary<TypeSymbol, FunctionSymbol> DynamicComparisonConversions = new()
+    {
+        [ScalarTypes.Int] = Functions.ToInt,
+        [ScalarTypes.Long] = Functions.ToLong,
+        [ScalarTypes.Real] = Functions.ToReal,
+        [ScalarTypes.Decimal] = Functions.ToDecimal,
+        [ScalarTypes.Bool] = Functions.ToBool,
+        [ScalarTypes.DateTime] = Functions.ToDateTime,
+        [ScalarTypes.TimeSpan] = Functions.ToTimespan,
+        [ScalarTypes.Guid] = Functions.ToGuid,
+    };
+
+    /// <summary>
+    ///     ADX compares a dynamic value with a typed scalar (a number, bool, datetime, timespan or guid) by converting
+    ///     the dynamic value to the scalar's type, as the matching to-function does: dynamic("0123") == 123 and
+    ///     dynamic("2015-01-01T10:20:30Z") == datetime(2015-01-01T10:20:30Z) are true, and dynamic("123") > 100 is
+    ///     an ordered comparison of longs. A comparison with a string (or with another dynamic) is left as it is,
+    ///     because ADX compares the text there.
+    /// </summary>
+    private void ConvertDynamicOperandToTypedOperand(IRExpressionNode[] irArguments)
+    {
+        for (var i = 0; i < irArguments.Length; i++)
+        {
+            if (irArguments[i].ResultType.Simplify() != ScalarTypes.Dynamic) continue;
+            var other = irArguments[1 - i].ResultType.Simplify();
+            if (!DynamicComparisonConversions.TryGetValue(other, out var conversion)) return;
+            var signature = conversion.Signatures[0];
+            var parameters = signature.Parameters.Take(1).ToList();
+            var arguments = new[] { irArguments[i] };
+            if (!FunctionFinder.TryGetOverload(_functions, conversion, other, arguments, parameters, out var overload))
+                return;
+            ApplyTypeCoercions(arguments, overload!);
+            irArguments[i] = new IRBuiltInScalarFunctionCallNode(signature, overload!, parameters,
+                IRListNode.From(arguments), other);
+            return;
+        }
     }
 
     public override IRNode VisitExpressionCouple(ExpressionCouple node)
