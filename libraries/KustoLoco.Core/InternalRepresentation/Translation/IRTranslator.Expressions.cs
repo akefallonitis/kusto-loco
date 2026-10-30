@@ -294,6 +294,16 @@ internal partial class IRTranslator : DefaultSyntaxVisitor<IRNode>
         if (node.ResultType == ScalarTypes.Decimal)
             return new IRLiteralExpressionNode(decimal.TryParse(node.LiteralValueInfo.ValueText, CultureInfo.InvariantCulture, out var f) ? f : null, node.ResultType);
 
+        // KustoLanguage parses a `...Z` datetime literal into the host's LOCAL frame (DateTimeKind.Local,
+        // shifted by the host's UTC offset); ADX datetime literals are UTC and the engine materializes and
+        // renders datetime columns as UTC, so a Local-kind literal mis-windows every tick-based comparison
+        // (e.g. `col >= datetime(<ISO-Z>)`, between, in) by the local offset on any non-UTC host and
+        // silently drops rows. Recover the UTC instant. A bare literal is Unspecified and its wall clock is
+        // already the UTC value KustoLoco compares and renders -- and stays reinterpretable by
+        // datetime_local_to_utc -- so leave it untouched. ADX-faithful and upstreamable.
+        if (node.ResultType == ScalarTypes.DateTime && node.LiteralValue is DateTime { Kind: DateTimeKind.Local } local)
+            return new IRLiteralExpressionNode(local.ToUniversalTime(), node.ResultType);
+
         return new IRLiteralExpressionNode(node.LiteralValue, node.ResultType);
     }
 
