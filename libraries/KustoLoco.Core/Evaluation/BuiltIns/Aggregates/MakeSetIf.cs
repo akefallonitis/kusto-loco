@@ -288,14 +288,12 @@ internal class MakeSetIfStringFunctionImpl : IAggregateImpl
         {
             if (predicatesColumn[i] == true)
             {
-                var v = valuesColumn[i];
-                if (!string.IsNullOrEmpty(v))
+                // ADX has no null string: a missing value is the empty string, which is kept
+                var v = valuesColumn[i] ?? string.Empty;
+                set.Add(v);
+                if (set.Count >= maxSize)
                 {
-                    set.Add(v);
-                    if (set.Count >= maxSize)
-                    {
-                        break;
-                    }
+                    break;
                 }
             }
         }

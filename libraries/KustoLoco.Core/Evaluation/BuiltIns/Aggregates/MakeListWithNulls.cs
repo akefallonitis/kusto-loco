@@ -119,10 +119,11 @@ internal class MakeListWithNullsStringFunctionImpl : IAggregateImpl
         MyDebug.Assert(arguments.Length == 1);
         var valuesColumn = (GenericTypedBaseColumnOfstring)arguments[0].Column;
 
-        var list = new List<string?>();
+        // ADX has no null string: a missing value is the empty string
+        var list = new List<string>();
         for (var i = 0; i < valuesColumn.RowCount; i++)
         {
-            list.Add(valuesColumn[i]);
+            list.Add(valuesColumn[i] ?? string.Empty);
         }
 
         return new ScalarResult(ScalarTypes.Dynamic, JsonArrayHelper.From(list));

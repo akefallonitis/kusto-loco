@@ -107,7 +107,11 @@ internal partial class TreeEvaluator
             {
                 if (columns[i] == NullColumn.Instance)
                 {
-                    columns[i] = ColumnHelpers.CreateFromScalar(null, Type.Columns[i].Type, rowCount);
+                    // a table without this column contributes nulls - except for strings,
+                    // which ADX fills with the empty string because it has no null string
+                    var columnType = Type.Columns[i].Type;
+                    var fill = columnType == ScalarTypes.String ? string.Empty : null;
+                    columns[i] = ColumnHelpers.CreateFromScalar(fill, columnType, rowCount);
                 }
             }
 
