@@ -1,5 +1,6 @@
 using System;
 using System.Text.Json.Nodes;
+using KustoLoco.Core.Util;
 
 namespace KustoLoco.Core.Evaluation.BuiltIns.Impl;
 
@@ -7,17 +8,17 @@ namespace KustoLoco.Core.Evaluation.BuiltIns.Impl;
 internal partial class ArrayIndexOfFunction
 {
     internal static long StringImpl(JsonNode itemArray, string value)
-        => ArrayIndexOfCore.StartLengthOccurenceImpl(itemArray, value, 0, -1, 1);
+        => ArrayIndexOfCore.StringImpl(itemArray, value, 0, -1, 1);
 
     internal static long StringStartImpl(JsonNode itemArray, string value, long start)
-        => ArrayIndexOfCore.StartLengthOccurenceImpl(itemArray, value, start, -1, 1);
+        => ArrayIndexOfCore.StringImpl(itemArray, value, start, -1, 1);
 
     internal static long StringStartLengthImpl(JsonNode itemArray, string value, long start, long length)
-        => ArrayIndexOfCore.StartLengthOccurenceImpl(itemArray, value, start, length, 1);
+        => ArrayIndexOfCore.StringImpl(itemArray, value, start, length, 1);
 
     internal static long StringStartLengthOccurenceImpl(JsonNode itemArray, string value, long start, long length,
         long occurence)
-        => ArrayIndexOfCore.StartLengthOccurenceImpl(itemArray, value, start, length, occurence);
+        => ArrayIndexOfCore.StringImpl(itemArray, value, start, length, occurence);
 
 
     internal static long LongImpl(JsonNode itemArray, long value)
@@ -105,6 +106,19 @@ internal static class ArrayIndexOfCore
 {
     public static long StartLengthOccurenceImpl<T>(JsonNode itemArray, T value, long start, long length, long occurence)
         where T : IEquatable<T>
+        => Find(itemArray, start, length, occurence, v => v.TryGetValue<T>(out var s) && s.Equals(value));
+
+    // ADX converts the value to the type of the element it is compared with, so a string that reads as a datetime or a
+    // guid also finds the element that parse_json or a dynamic literal typed from the same text
+    // (array_index_of(parse_json('["2015-01-01"]'), "2015-01-01") is 0): see DynamicStringTyping.
+    public static long StringImpl(JsonNode itemArray, string value, long start, long length, long occurence)
+    {
+        var typed = DynamicStringTyping.TryGetTypedText(value, out var t) ? t : value;
+        return Find(itemArray, start, length, occurence,
+            v => v.TryGetValue<string>(out var s) && (s == value || s == typed));
+    }
+
+    private static long Find(JsonNode itemArray, long start, long length, long occurence, Func<JsonValue, bool> matches)
     {
         if (itemArray is not JsonArray items)
             return -1;
@@ -116,8 +130,7 @@ internal static class ArrayIndexOfCore
             length < 0 ? items.Count : Math.Min(items.Count, pos + length);
         for (var i = pos; i < last; i++)
         {
-            if (items[(int)i] is not JsonValue v) continue;
-            if (!v.TryGetValue<T>(out var s) || !s.Equals(value)) continue;
+            if (items[(int)i] is not JsonValue v || !matches(v)) continue;
             occurence--;
             if (occurence <= 0)
                 return i;

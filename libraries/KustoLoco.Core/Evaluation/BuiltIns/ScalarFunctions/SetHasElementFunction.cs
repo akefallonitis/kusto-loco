@@ -8,7 +8,7 @@ namespace KustoLoco.Core.Evaluation.BuiltIns.Impl;
 [KustoImplementation(Keyword = "Functions.SetHasElement")]
 internal partial class SetHasElementFunction
 {
-    private static bool? StringImpl(JsonNode set, string value) => DynamicSetSupport.Has(set, JsonValue.Create(value));
+    private static bool? StringImpl(JsonNode set, string value) => DynamicSetSupport.HasString(set, value);
     private static bool? LongImpl(JsonNode set, long value) => DynamicSetSupport.Has(set, JsonValue.Create(value));
     private static bool? RealImpl(JsonNode set, double value) => DynamicSetSupport.Has(set, JsonValue.Create(value));
     private static bool? BoolImpl(JsonNode set, bool value) => DynamicSetSupport.Has(set, JsonValue.Create(value));
