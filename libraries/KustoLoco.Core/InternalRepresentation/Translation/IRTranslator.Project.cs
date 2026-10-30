@@ -55,7 +55,7 @@ internal partial class IRTranslator
             var symbol = (ColumnSymbol)t;
             renamedColumns.TryGetValue(symbol, out var originalSymbol);
             var referencedSymbol = originalSymbol ?? symbol;
-            var referencedColumnIndex = _rowScope.Members.IndexOf(referencedSymbol);
+            var referencedColumnIndex = RowScopeIndexOf(referencedSymbol);
             columns.Add(new IROutputColumnNode(symbol,
                 new IRRowScopeNameReferenceNode(referencedSymbol, symbol.Type, referencedColumnIndex)));
         }
@@ -84,7 +84,7 @@ internal partial class IRTranslator
         foreach (var t in resultTypeMember)
         {
             var symbol = (ColumnSymbol)t;
-            var referencedColumnIndex = _rowScope.Members.IndexOf(symbol);
+            var referencedColumnIndex = RowScopeIndexOf(symbol);
             columns.Add(new IROutputColumnNode(symbol,
                 new IRRowScopeNameReferenceNode(symbol, symbol.Type, referencedColumnIndex)));
         }
@@ -144,7 +144,7 @@ internal partial class IRTranslator
             }
             else
             {
-                var referencedColumnIndex = _rowScope.Members.IndexOf(column);
+                var referencedColumnIndex = RowScopeIndexOf(column);
                 irExpression = new IRRowScopeNameReferenceNode(column, column.Type, referencedColumnIndex);
             }
 
@@ -152,5 +152,19 @@ internal partial class IRTranslator
         }
 
         return new IRProjectOperatorNode(IRListNode.From(columns), resultType,requiresSerialization);
+    }
+
+    /// <summary>
+    ///     The index in the current row scope of the column <paramref name="symbol" /> refers to. Kusto.Language
+    ///     binds an operator against symbols of its own; a row scope built here can hold different symbol instances
+    ///     for the same columns (mv-apply builds its subquery's scope from the expanded columns, retyped), so a
+    ///     column that is not in the scope by identity is found by its name, which is unique within a row scope.
+    /// </summary>
+    private int RowScopeIndexOf(Symbol symbol)
+    {
+        var index = _rowScope.Members.IndexOf(symbol);
+        return index >= 0
+            ? index
+            : _rowScope.Members.FirstIndex(m => m is ColumnSymbol && m.Name == symbol.Name);
     }
 }
