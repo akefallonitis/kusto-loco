@@ -68,9 +68,8 @@ public class GenericMappedColumn<T> : GenericTypedBaseColumn<T>
 
     public override BaseColumn Slice(int start, int length)
     {
+        // an empty slice is a valid zero-row column (take 0, an empty page), as it is for every other column kind
         var slicedData = _lookups.Slice(start, length);
-        if (slicedData.Length == 0)
-            throw new InvalidOperationException();
         return new GenericMappedColumn<T>(slicedData, BackingColumn);
     }
 

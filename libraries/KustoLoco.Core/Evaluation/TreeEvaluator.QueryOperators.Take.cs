@@ -24,8 +24,10 @@ internal partial class TreeEvaluator
         var countExpressionResult = node.Expression.Accept(this, context);
         MyDebug.Assert(countExpressionResult != EvaluationResult.Null);
         var count = (ScalarResult)countExpressionResult;
+        // a negative count takes no rows, as in ADX
         var result =
-            new TakeResultTable(context.Left.Value, count.Value == null ? 0 : Convert.ToInt32(count.Value));
+            new TakeResultTable(context.Left.Value,
+                count.Value == null ? 0 : Math.Max(0, Convert.ToInt32(count.Value)));
         return TabularResult.CreateWithVisualisation(result, context.Left.VisualizationState);
     }
 
