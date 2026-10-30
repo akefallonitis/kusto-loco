@@ -118,7 +118,11 @@ internal static class InListKeys
             },
             InListDomain.DateTime => value switch
             {
-                DateTime t => t.ToUniversalTime().Ticks.ToString(CultureInfo.InvariantCulture),
+                // x in (a, b) is x == a or x == b, and == compares datetimes by their ticks whatever their kind, so the
+                // key is the ticks as they are. ToUniversalTime() shifts an Unspecified value (a bare literal) by the
+                // host's offset but not a Utc one (make_datetime, todatetime, column inference, min/max); converting
+                // only Local would break datetime_utc_to_local values, whose Local label sits on another zone's clock.
+                DateTime t => t.Ticks.ToString(CultureInfo.InvariantCulture),
                 string s when DateTime.TryParse(s, CultureInfo.InvariantCulture,
                     DateTimeStyles.AdjustToUniversal | DateTimeStyles.AssumeUniversal, out var t)
                     => t.Ticks.ToString(CultureInfo.InvariantCulture),
