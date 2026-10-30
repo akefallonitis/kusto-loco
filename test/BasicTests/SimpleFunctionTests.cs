@@ -114,8 +114,9 @@ datatable(Size:int) [50]
     public async Task SplitWithRequestedIndex()
     {
         var query = """print split("aaa_bbb_ccc", "_", 1)""";
-        var result = await LastLineOfResult(query);
-        result.Should().Be("bbb");
+        var result = await SquashedLastLineOfResult(query);
+        // ADX returns a one-element array holding the requested substring
+        result.Should().Be("""["bbb"]""");
     }
 
 

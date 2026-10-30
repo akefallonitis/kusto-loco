@@ -49,16 +49,20 @@ internal class SplitFunctionImpl : IScalarFunctionImpl
     }
 }
 
+// split(source, delimiter, requestedIndex) returns a string array holding the substring at requestedIndex,
+// so split(s, d, i)[0] reads it. https://learn.microsoft.com/kusto/query/split-function
+// Out-of-range and negative indexes follow the ADX engine: an index at or past the end gives null; a negative index
+// gives the whole array when evaluated per row, while a constant-folded call (every argument constant: the scalar
+// path here) gives the whole array for -1 and null below -1.
 internal class SplitWithIndexFunctionImpl : IScalarFunctionImpl
 {
     public ScalarResult InvokeScalar(ScalarResult[] arguments)
     {
         MyDebug.Assert(arguments.Length == 3);
 
-        var result = Evaluate(arguments[0].Value as string, arguments[1].Value as string, GetLongValue(arguments[2].Value));
-        // Return as Dynamic type with the string value serialized as a JsonNode
-        var jsonValue = result != null ? JsonValue.Create(result) : null;
-        return new ScalarResult(ScalarTypes.Dynamic, jsonValue);
+        var result = Evaluate(arguments[0].Value as string, arguments[1].Value as string, GetLongValue(arguments[2].Value),
+            constantFolded: true);
+        return new ScalarResult(ScalarTypes.Dynamic, result);
     }
 
     public ColumnarResult InvokeColumnar(ColumnarResult[] arguments)
@@ -73,8 +77,7 @@ internal class SplitWithIndexFunctionImpl : IScalarFunctionImpl
         var data = NullableSetBuilderOfJsonNode.CreateFixed(rowCount);
         for (var i = 0; i < rowCount; i++)
         {
-            var result = Evaluate(sourceColumn[i], delimiterColumn[i], indexColumn[i]);
-            data[i] = result != null ? JsonValue.Create(result) : null;
+            data[i] = Evaluate(sourceColumn[i], delimiterColumn[i], indexColumn[i], constantFolded: false);
         }
 
         return new ColumnarResult(GenericColumnFactoryOfJsonNode.CreateFromDataSet(data.ToNullableSet()));
@@ -92,7 +95,7 @@ internal class SplitWithIndexFunctionImpl : IScalarFunctionImpl
         };
     }
 
-    private static string? Evaluate(string? source, string? delimiter, long? requestedIndex)
+    private static JsonArray? Evaluate(string? source, string? delimiter, long? requestedIndex, bool constantFolded)
     {
         if (source is null) return null;
         if (delimiter is null) return null;
@@ -101,26 +104,18 @@ internal class SplitWithIndexFunctionImpl : IScalarFunctionImpl
         var toks = source.Split(delimiter);
         var indexValue = requestedIndex.Value;
 
-        // Handle overflow - if index is too large/small, it will be out of range anyway
-        if (indexValue > int.MaxValue || indexValue < int.MinValue)
+        if (indexValue < 0)
         {
-            return string.Empty;
+            return constantFolded && indexValue < -1
+                ? null
+                : new JsonArray(toks.Select(t => (JsonNode?)JsonValue.Create(t)).ToArray());
         }
 
-        var index = (int)indexValue;
-
-        // Handle negative indices (from the end of the array)
-        if (index < 0)
+        if (indexValue >= toks.Length)
         {
-            index = toks.Length + index;
+            return null;
         }
 
-        // Return empty string if index is out of range
-        if (index < 0 || index >= toks.Length)
-        {
-            return string.Empty;
-        }
-
-        return toks[index];
+        return new JsonArray(JsonValue.Create(toks[(int)indexValue]));
     }
 }

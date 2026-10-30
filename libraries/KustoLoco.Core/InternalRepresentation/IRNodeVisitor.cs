@@ -25,6 +25,7 @@ internal abstract class IRNodeVisitor<TResult, TContext>
     public abstract TResult VisitLetStatement(IRLetStatementNode node, TContext context);
     public abstract TResult VisitList(IRListNode node, TContext context);
     public abstract TResult VisitLiteralExpression(IRLiteralExpressionNode node, TContext context);
+    public abstract TResult VisitInList(IRInListNode node, TContext context);
     public abstract TResult VisitMemberAccess(IRMemberAccessNode node, TContext context);
     public abstract TResult VisitMemberAccess(IRArrayAccessNode node, TContext context);
     public abstract TResult VisitNameReference(IRNameReferenceNode node, TContext context);
