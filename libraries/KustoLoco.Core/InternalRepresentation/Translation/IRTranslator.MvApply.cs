@@ -8,6 +8,7 @@ using Kusto.Language.Symbols;
 using Kusto.Language.Syntax;
 using KustoLoco.Core.InternalRepresentation.Nodes.Expressions;
 using KustoLoco.Core.InternalRepresentation.Nodes.Expressions.QueryOperators;
+using KustoLoco.Core.Extensions;
 
 namespace KustoLoco.Core.InternalRepresentation;
 
@@ -34,7 +35,11 @@ internal partial class IRTranslator
             var typeArgs = mvApplyExpr.ToTypeOf?.TypeOf?.Types;
             if (typeArgs is { Count: > 0 } && typeArgs[0].Element is { } typeExpr)
                 elementType = typeExpr.ReferencedSymbol as TypeSymbol;
-            elementType ??= actualExpression.ResultType as TypeSymbol ?? ScalarTypes.Dynamic;
+            // without 'to typeof', an element of a dynamic array is a dynamic value; Kusto.Language may type the array
+            // by its shape (a dynamic literal), which is not the element's type
+            elementType ??= actualExpression.ResultType is TypeSymbol sourceType && sourceType.Simplify() != ScalarTypes.Dynamic
+                ? sourceType
+                : ScalarTypes.Dynamic;
 
             columns.Add(new IRMvExpandColumnNode(new ColumnSymbol(colName, elementType), irExpression));
         }

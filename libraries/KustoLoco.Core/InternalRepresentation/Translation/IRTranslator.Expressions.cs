@@ -256,8 +256,9 @@ internal partial class IRTranslator : DefaultSyntaxVisitor<IRNode>
 
 
             //try column lookup ...
+            // dynamic values compare by kind: Kusto.Language may give the same column a shaped dynamic type
             var m = _rowScope.Members.FirstIndex(t =>
-                t is ColumnSymbol cs && cs.Name == node.ReferencedSymbol.Name && cs.Type == node.ResultType);
+                t is ColumnSymbol cs && cs.Name == node.ReferencedSymbol.Name && cs.Type.Simplify() == node.ResultType.Simplify());
             if (m >= 0) return new IRRowScopeNameReferenceNode(node.ReferencedSymbol, node.ResultType, m);
 
             //if the node referenced symbol has type unknown because it may have come
