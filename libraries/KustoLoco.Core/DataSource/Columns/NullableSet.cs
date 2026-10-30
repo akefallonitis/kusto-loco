@@ -78,8 +78,20 @@ public sealed class NullableSet<T> : INullableSet
         {
             var length = baseArray.Length;
 #if TYPE_DATETIME
-            nonNullData = nonNullData.Select(dt=>dt.ToUniversalTime()).ToArray();
-#endif 
+            // KustoLoco stores datetimes as UTC and treats DateTimeKind.Unspecified as a UTC wall-clock
+            // (datetime_to_utc relabels Unspecified with SpecifyKind(Utc); KustoFormatter renders it like
+            // Utc). Relabel Unspecified WITHOUT shifting, convert a genuine Local value to its UTC instant,
+            // and leave Utc untouched. A blanket ToUniversalTime() would treat Unspecified as host-local and
+            // corrupt the stored instant on any non-UTC host.
+            nonNullData = nonNullData
+                .Select(dt => dt.Kind switch
+                {
+                    DateTimeKind.Unspecified => DateTime.SpecifyKind(dt, DateTimeKind.Utc),
+                    DateTimeKind.Local => dt.ToUniversalTime(),
+                    _ => dt,
+                })
+                .ToArray();
+#endif
             return new NullableSet<T>(new BitArray(1), nonNullData);
         }
 
@@ -96,7 +108,14 @@ public sealed class NullableSet<T> : INullableSet
                     isNull[i] = true;
                 else
 #if TYPE_DATETIME
-                    nonnull[i] = t.ToUniversalTime();
+                    // Same UTC convention as the non-nullable branch above: relabel Unspecified without
+                    // shifting, convert Local to its UTC instant, leave Utc untouched.
+                    nonnull[i] = t.Kind switch
+                    {
+                        DateTimeKind.Unspecified => DateTime.SpecifyKind(t, DateTimeKind.Utc),
+                        DateTimeKind.Local => t.ToUniversalTime(),
+                        _ => t,
+                    };
 #else
                     nonnull[i] = t;
 #endif
