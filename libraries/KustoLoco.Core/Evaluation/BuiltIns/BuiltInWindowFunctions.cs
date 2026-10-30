@@ -30,7 +30,13 @@ internal static class BuiltInWindowFunctions
                 new WindowOverloadInfo(new RowCumSumDecimalFunctionImpl(), ScalarTypes.Decimal, ScalarTypes.Decimal,
                     ScalarTypes.Bool),
                 new WindowOverloadInfo(new RowCumSumTimeSpanFunctionImpl(), ScalarTypes.TimeSpan, ScalarTypes.TimeSpan,
-                    ScalarTypes.Bool)));
+                    ScalarTypes.Bool),
+                // row_cumsum(term): the restart argument is optional
+                new WindowOverloadInfo(new RowCumSumIntFunctionImpl(), ScalarTypes.Int, ScalarTypes.Int),
+                new WindowOverloadInfo(new RowCumSumLongFunctionImpl(), ScalarTypes.Long, ScalarTypes.Long),
+                new WindowOverloadInfo(new RowCumSumDoubleFunctionImpl(), ScalarTypes.Real, ScalarTypes.Real),
+                new WindowOverloadInfo(new RowCumSumDecimalFunctionImpl(), ScalarTypes.Decimal, ScalarTypes.Decimal),
+                new WindowOverloadInfo(new RowCumSumTimeSpanFunctionImpl(), ScalarTypes.TimeSpan, ScalarTypes.TimeSpan)));
     }
 
     public static WindowOverloadInfo GetOverload(FunctionSymbol symbol,

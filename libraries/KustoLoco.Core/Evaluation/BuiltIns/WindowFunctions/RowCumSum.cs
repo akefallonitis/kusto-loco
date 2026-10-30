@@ -12,9 +12,10 @@ internal class RowCumSumIntFunctionImpl : IWindowFunctionImpl
     public ColumnarResult InvokeWindow(ColumnarResult[] thisWindowArguments, ColumnarResult[]? previousWindowArguments,
         ColumnarResult? previousWindowResult)
     {
-        MyDebug.Assert(thisWindowArguments.Length == 2);
+        MyDebug.Assert(thisWindowArguments.Length is 1 or 2);
         var termCol = (GenericTypedBaseColumnOfint)thisWindowArguments[0].Column;
-        var restartCol = (GenericTypedBaseColumnOfbool)thisWindowArguments[1].Column;
+        // restart is optional (row_cumsum(term)): no restart column means no restart
+        var restartCol = thisWindowArguments.Length > 1 ? (GenericTypedBaseColumnOfbool)thisWindowArguments[1].Column : null;
 
         var accumulator = 0;
         if (previousWindowResult != null)
@@ -31,7 +32,7 @@ internal class RowCumSumIntFunctionImpl : IWindowFunctionImpl
         var data = NullableSetBuilderOfint.CreateFixed(termCol.RowCount);
         for (var i = 0; i < termCol.RowCount; i++)
         {
-            var restart = restartCol[i];
+            var restart = restartCol?[i];
             if (restart == true)
             {
                 accumulator = 0;
@@ -55,9 +56,10 @@ internal class RowCumSumLongFunctionImpl : IWindowFunctionImpl
     public ColumnarResult InvokeWindow(ColumnarResult[] thisWindowArguments, ColumnarResult[]? previousWindowArguments,
         ColumnarResult? previousWindowResult)
     {
-        MyDebug.Assert(thisWindowArguments.Length == 2);
+        MyDebug.Assert(thisWindowArguments.Length is 1 or 2);
         var termCol = (GenericTypedBaseColumnOflong)thisWindowArguments[0].Column;
-        var restartCol = (GenericTypedBaseColumnOfbool)thisWindowArguments[1].Column;
+        // restart is optional (row_cumsum(term)): no restart column means no restart
+        var restartCol = thisWindowArguments.Length > 1 ? (GenericTypedBaseColumnOfbool)thisWindowArguments[1].Column : null;
 
         long accumulator = 0;
         if (previousWindowResult != null)
@@ -72,7 +74,7 @@ internal class RowCumSumLongFunctionImpl : IWindowFunctionImpl
         var data = NullableSetBuilderOflong.CreateFixed(termCol.RowCount);
         for (var i = 0; i < termCol.RowCount; i++)
         {
-            var restart = restartCol[i];
+            var restart = restartCol?[i];
             if (restart == true)
             {
                 accumulator = 0;
@@ -96,9 +98,10 @@ internal class RowCumSumDoubleFunctionImpl : IWindowFunctionImpl
     public ColumnarResult InvokeWindow(ColumnarResult[] thisWindowArguments, ColumnarResult[]? previousWindowArguments,
         ColumnarResult? previousWindowResult)
     {
-        MyDebug.Assert(thisWindowArguments.Length == 2);
+        MyDebug.Assert(thisWindowArguments.Length is 1 or 2);
         var termCol = (GenericTypedBaseColumnOfdouble)thisWindowArguments[0].Column;
-        var restartCol = (GenericTypedBaseColumnOfbool)thisWindowArguments[1].Column;
+        // restart is optional (row_cumsum(term)): no restart column means no restart
+        var restartCol = thisWindowArguments.Length > 1 ? (GenericTypedBaseColumnOfbool)thisWindowArguments[1].Column : null;
 
         double accumulator = 0;
         if (previousWindowResult != null)
@@ -115,7 +118,7 @@ internal class RowCumSumDoubleFunctionImpl : IWindowFunctionImpl
         var data = NullableSetBuilderOfdouble.CreateFixed(termCol.RowCount);
         for (var i = 0; i < termCol.RowCount; i++)
         {
-            var restart = restartCol[i];
+            var restart = restartCol?[i];
             if (restart == true)
             {
                 accumulator = 0;
@@ -139,9 +142,10 @@ internal class RowCumSumDecimalFunctionImpl : IWindowFunctionImpl
     public ColumnarResult InvokeWindow(ColumnarResult[] thisWindowArguments, ColumnarResult[]? previousWindowArguments,
         ColumnarResult? previousWindowResult)
     {
-        MyDebug.Assert(thisWindowArguments.Length == 2);
+        MyDebug.Assert(thisWindowArguments.Length is 1 or 2);
         var termCol = (GenericTypedBaseColumnOfdecimal)thisWindowArguments[0].Column;
-        var restartCol = (GenericTypedBaseColumnOfbool)thisWindowArguments[1].Column;
+        // restart is optional (row_cumsum(term)): no restart column means no restart
+        var restartCol = thisWindowArguments.Length > 1 ? (GenericTypedBaseColumnOfbool)thisWindowArguments[1].Column : null;
 
         decimal accumulator = 0;
         if (previousWindowResult != null)
@@ -158,7 +162,7 @@ internal class RowCumSumDecimalFunctionImpl : IWindowFunctionImpl
         var data = NullableSetBuilderOfdecimal.CreateFixed(termCol.RowCount);
         for (var i = 0; i < termCol.RowCount; i++)
         {
-            var restart = restartCol[i];
+            var restart = restartCol?[i];
             if (restart == true)
             {
                 accumulator = 0;
@@ -182,9 +186,10 @@ internal class RowCumSumTimeSpanFunctionImpl : IWindowFunctionImpl
     public ColumnarResult InvokeWindow(ColumnarResult[] thisWindowArguments, ColumnarResult[]? previousWindowArguments,
         ColumnarResult? previousWindowResult)
     {
-        MyDebug.Assert(thisWindowArguments.Length == 2);
+        MyDebug.Assert(thisWindowArguments.Length is 1 or 2);
         var termCol = (GenericTypedBaseColumnOfTimeSpan)thisWindowArguments[0].Column;
-        var restartCol = (GenericTypedBaseColumnOfbool)thisWindowArguments[1].Column;
+        // restart is optional (row_cumsum(term)): no restart column means no restart
+        var restartCol = thisWindowArguments.Length > 1 ? (GenericTypedBaseColumnOfbool)thisWindowArguments[1].Column : null;
 
         var accumulator = TimeSpan.Zero;
         if (previousWindowResult != null)
@@ -201,7 +206,7 @@ internal class RowCumSumTimeSpanFunctionImpl : IWindowFunctionImpl
         var data = NullableSetBuilderOfTimeSpan.CreateFixed(termCol.RowCount);
         for (var i = 0; i < termCol.RowCount; i++)
         {
-            var restart = restartCol[i];
+            var restart = restartCol?[i];
             if (restart == true)
             {
                 accumulator = TimeSpan.Zero;
