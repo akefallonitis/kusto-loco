@@ -4,8 +4,10 @@ using System.Collections.Specialized;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Nodes;
 using KustoLoco.Core.DataSource;
 using KustoLoco.Core.Evaluation;
+using KustoLoco.Core.Util;
 using NotNullStrings;
 
 namespace KustoLoco.Core;
@@ -18,6 +20,7 @@ public static class KustoFormatter
         return o switch
         {
             null => "<null>",
+            JsonNode node => DynamicText.ToDisplayString(node),
             DateTime d => d.Kind == DateTimeKind.Local
                 ? d.ToString("yyyy-MM-dd HH:mm:ss.ffff")
                 : d.ToString("u"),

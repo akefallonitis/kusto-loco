@@ -40,6 +40,19 @@ public class SerializeTests
     }
 
     [TestMethod]
+    public async Task CsvWritesDynamicValuesAsCompactJson()
+    {
+        // a dynamic value is written as tostring() gives it - compact JSON in which only the
+        // characters JSON requires are escaped, as ADX does (tostring checked against kustainer)
+        const string json = """{"a":"x>y","b":"q\"r","c":"<&'","e":"é"}""";
+        var result = await Query($"print d = dynamic({json})");
+        var stream = new MemoryStream();
+        await _csvSerializer.SaveTable(stream, result);
+        var lines = Encoding.UTF8.GetString(stream.ToArray()).ReplaceLineEndings("\n").Split('\n');
+        lines[1].Should().Be("\"" + json.Replace("\"", "\"\"") + "\"");
+    }
+
+    [TestMethod]
     public async Task NonNullableCanBeRead()
     {
         var count = 100;

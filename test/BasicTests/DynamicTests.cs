@@ -183,7 +183,9 @@ public class DynamicTests : TestMethods
                      | extend res_str = strcat_array(res, ",")
                      | project res_str
                      """;
-        var expected4 = "1,2,\"null\"";
+        // strcat_array writes a string element without quotes, as ADX does. The third element is
+        // the string "null" that array_iff fills in for a missing value (ADX fills null, giving "1,2,")
+        var expected4 = "1,2,null";
         var res4 = await LastLineOfResult(query4);
         res4.Should().Be(expected4);
     }
@@ -198,7 +200,9 @@ public class DynamicTests : TestMethods
                      | extend res_str = strcat_array(res, ",")
                      | project res_str
                      """;
-        var expected4 = "1,2,\"null\"";
+        // strcat_array writes a string element without quotes, as ADX does. The third element is
+        // the string "null" that array_iff fills in for a missing value (ADX fills null, giving "1,2,")
+        var expected4 = "1,2,null";
         var res4 = await LastLineOfResult(query4);
         res4.Should().Be(expected4);
     }

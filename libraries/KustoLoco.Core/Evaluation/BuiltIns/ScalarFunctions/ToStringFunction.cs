@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Globalization;
-using System.Text.Json;
 using System.Text.Json.Nodes;
-using NotNullStrings;
+using KustoLoco.Core.Util;
 
 namespace KustoLoco.Core.Evaluation.BuiltIns.Impl;
 
@@ -18,27 +17,7 @@ internal partial class ToStringFunction
     private static string DtImpl(DateTime input) => input.ToString("M/d/yyyy h:mm:ss tt", CultureInfo.InvariantCulture);
     private static string TsImpl(TimeSpan input) => input.ToString();
 
-    private static string DynImpl(JsonNode input)
-    {
-        if (input is JsonValue valueNode)
-        {
-            var value = valueNode.GetValue<object>();
-            if (value is JsonElement element)
-            {
-                if (element.ValueKind == JsonValueKind.String) return element.GetString().NullToEmpty();
-
-                if (element.ValueKind == JsonValueKind.Null) return string.Empty;
-
-                // For any other value kind, continue below and use input.ToJsonString...
-            }
-            else if (value is string stringValue)
-            {
-                return stringValue;
-            }
-
-            // For any other type, continue below and use input.ToJsonString...
-        }
-
-        return input.ToJsonString();
-    }
+    // a string value is returned as it is, null as the empty string, and anything else as
+    // compact JSON with ADX escaping
+    private static string DynImpl(JsonNode input) => DynamicText.ToKustoString(input);
 }

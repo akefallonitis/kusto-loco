@@ -1,5 +1,6 @@
 ﻿using System.Linq;
 using System.Text.Json.Nodes;
+using KustoLoco.Core.Util;
 
 namespace KustoLoco.Core.Evaluation.BuiltIns.Impl;
 
@@ -10,6 +11,6 @@ internal partial class StrcatArrayFunction
     {
         return node is not JsonArray array
             ? string.Empty
-            : string.Join(separator, array.Select(a => a?.ToString()));
+            : string.Join(separator, array.Select(DynamicText.ToKustoString));
     }
 }
