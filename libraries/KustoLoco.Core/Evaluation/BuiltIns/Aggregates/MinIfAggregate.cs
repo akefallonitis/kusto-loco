@@ -84,7 +84,7 @@ internal partial class MinIfAggregate
         return valid.Any() ? new TimeSpan(valid.Select(c => c.LongValue).Min()) : null;
     }
 
-    internal static DateTime DtImpl(NumericAggregate context, TimeSpan n, bool t)
+    internal static DateTime DtImpl(NumericAggregate context, DateTime n, bool t)
     {
         if (!t)
             return DateTime.MinValue;
