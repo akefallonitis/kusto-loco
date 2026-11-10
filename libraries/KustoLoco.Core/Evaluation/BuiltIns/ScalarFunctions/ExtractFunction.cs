@@ -7,7 +7,7 @@ internal partial class ExtractFunction
 {
     private static string Impl(string pattern, long captureGroup, string input)
     {
-        var match = Regex.Match(input, pattern, RegexOptions.Compiled);
+        var match = KqlRegex.Get(pattern).Match(input);
         var result = string.Empty;
         if (!match.Success) return result;
         if (captureGroup < match.Groups.Count)

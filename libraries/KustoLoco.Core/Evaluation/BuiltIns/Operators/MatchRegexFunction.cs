@@ -3,12 +3,9 @@
 // ReSharper disable PartialTypeWithSinglePart
 namespace KustoLoco.Core.Evaluation.BuiltIns.Impl;
 
-/// <remarks>
-///     This uses the built-in .NET Regex implementation, which isn't strictly compatible with Kusto's RE2.
-///     See: https://learn.microsoft.com/en-us/azure/data-explorer/kusto/query/re2
-/// </remarks>
+/// <remarks>RE2 semantics through <see cref="KqlRegex"/>: linear time, RE2's construct set.</remarks>
 [KustoImplementation(Keyword = "Operators.MatchRegex")]
 internal partial class MatchRegexFunction
 {
-    internal static bool Impl(string str, string pattern) => Regex.IsMatch(str, pattern);
+    internal static bool Impl(string str, string pattern) => KqlRegex.Get(pattern).IsMatch(str);
 }

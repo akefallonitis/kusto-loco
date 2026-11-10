@@ -8,7 +8,8 @@ namespace KustoLoco.Core.Evaluation.BuiltIns.Impl;
 
 // extract_all(regex, source) / extract_all(regex, captureGroups, source) -> dynamic. ADX shape: 0 capture groups ->
 // the full matches; 1 group -> that group per match; >1 groups (or an explicit captureGroups list) -> an array of
-// arrays. A bad pattern or a match-timeout (ReDoS guard) -> null; no match -> an empty array.
+// arrays. A bad pattern (or one RE2 rejects) -> null; no match -> an empty array. RE2 semantics through KqlRegex:
+// linear time, so no match timeout is needed (the 1 s timeout it replaces turned a long field into a wrong null).
 [KustoImplementation(Keyword = "Functions.ExtractAll")]
 internal partial class ExtractAllFunction
 {
@@ -21,18 +22,15 @@ internal partial class ExtractAllFunction
 // Separate class: the source generator inlines an Impl body, so an Impl must not call a private same-class helper.
 internal static class ExtractAllSupport
 {
-    private static readonly TimeSpan RegexTimeout = TimeSpan.FromSeconds(1);
-
     public static JsonNode? Extract(string? pattern, string? source, JsonNode? captureGroups)
     {
         if (string.IsNullOrEmpty(pattern) || source is null) return null;
         Regex rx;
-        try { rx = new Regex(pattern, RegexOptions.CultureInvariant, RegexTimeout); }
+        try { rx = KqlRegex.Get(pattern); }
         catch (ArgumentException) { return null; }
 
         var matches = new List<Match>();
-        try { foreach (Match m in rx.Matches(source)) matches.Add(m); }
-        catch (RegexMatchTimeoutException) { return null; }
+        foreach (Match m in rx.Matches(source)) matches.Add(m);
         if (matches.Count == 0) return new JsonArray();
 
         if (captureGroups is JsonArray wantedArr)
