@@ -117,6 +117,7 @@ internal partial class TreeEvaluator
             if (arr.Length > maxLen) maxLen = arr.Length;
         }
         if (node.RowLimit is { } limit && maxLen > limit) maxLen = (int)limit;
+        ExpansionBudget.Budget?.Charge(maxLen);   // the query's row budget, before this row's intermediate is built
 
         var builders = ColumnHelpers.CreateBuildersForTable(intermediateSchema);
         for (var i = 0; i < intermediateColumns.Length; i++)

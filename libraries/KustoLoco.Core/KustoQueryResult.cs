@@ -64,6 +64,12 @@ public class KustoQueryResult
     public string Error { get; init; }
 
     /// <summary>
+    ///     The exception that stopped the query, when it failed (null otherwise) — so a host can tell one failure from
+    ///     another by type, e.g. an <see cref="Evaluation.ExpansionBudgetExceededException"/>, never by its message.
+    /// </summary>
+    public Exception? Exception { get; init; }
+
+    /// <summary>
     ///     Visualization state of the result (i.e. whether it's a table, chart, etc)
     /// </summary>
     public VisualizationState Visualization { get; init; }

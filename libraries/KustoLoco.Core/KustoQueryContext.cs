@@ -51,6 +51,13 @@ public class KustoQueryContext
     /// </summary>
     public Func<DateTime> Clock { get; set; } = () => DateTime.UtcNow;
 
+    /// <summary>
+    ///     The most rows the query's row-multiplying operators (mv-expand, mv-apply) may emit in total; past it the query
+    ///     stops before building the rows past the budget, with an <see cref="ExpansionBudgetExceededException"/> as the
+    ///     result's <see cref="KustoQueryResult.Exception"/>. Null (the default): unlimited.
+    /// </summary>
+    public long? MaxExpandedRows { get; set; }
+
 
     public static (VisualizationState state,string trimmedQuery) GetVisualizationState(string query)
     {
@@ -230,6 +237,7 @@ public class KustoQueryContext
         {
             // one instant for the whole evaluation, including the materialisation of the result below
             using var clock = QueryClock.Fix(Clock());
+            using var budget = ExpansionBudget.Fix(MaxExpandedRows);
             var result =
                 engine.Evaluate(_tables, query);
             var (table, vis) = TableFromEvaluationResult(result);
@@ -245,7 +253,7 @@ public class KustoQueryContext
             {
                 errorMessage += $"\n\n{ex.StackTrace}";
             }
-            return new KustoQueryResult(query, table, vis, TimeSpan.Zero, errorMessage);
+            return new KustoQueryResult(query, table, vis, TimeSpan.Zero, errorMessage) { Exception = ex };
         }
     }
 

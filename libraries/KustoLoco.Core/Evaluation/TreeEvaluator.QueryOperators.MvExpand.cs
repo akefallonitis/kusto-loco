@@ -78,6 +78,7 @@ internal partial class TreeEvaluator
 
             // Build the expanded rows
             var expandedIndices = new List<int>();
+            var budget = ExpansionBudget.Budget;   // the query's row budget (null: unlimited)
 
             for (var rowIndex = 0; rowIndex < rowCount; rowIndex++)
             {
@@ -93,6 +94,7 @@ internal partial class TreeEvaluator
                     if (expandedObjects.Length > maxLength)
                         maxLength = expandedObjects.Length;
                 }
+                budget?.Charge(maxLength);   // before this row's expanded rows are built
 
                 // For each expanded row index (up to maxLength), add values from all columns
                 for (var expandIndex = 0; expandIndex < maxLength; expandIndex++)
